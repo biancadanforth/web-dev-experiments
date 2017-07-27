@@ -1,79 +1,85 @@
-const data = {
-  "www.youtube.com": {
-    hostname: "www.youtube.com",
-    dateVisited: 1501099765384,
-    thirdPartyHostnames: [
-      "s.ytimg.com",
-      "i.ytimg.com"
-    ]
-  },
-  "s.ytimg.com": {
-    hostname: "s.ytimg.com",
-    dateVisited: 1501099969620,
-    isVisible: true,
-    firstPartyHostnames: [
-      "youtube.com"
-    ]
-  },
-  "i.ytimg.com": {
-    hostname: "i.ytimg.com",
-    dateVisited: 1501100018160,
-    isVisible: true,
-    firstPartyHostnames: [
-      "youtube.com"
-    ]
-  },
-  "en.gravatar.com": {
-    hostname: "en.gravatar.com",
-    dateVisited: 1500409398000,
-    firstPartyHostnames: [
-      "s0.wp.com",
-      "p.typekit.net",
-      "fonts.googleapis.com"
-    ]
-  },
-  "s.gravatar.com": {
-    hostname: "s.gravatar.com",
-    dateVisited: 1501099765384,
-    isVisible: false,
-    firstPartyHostnames: [
-      "en.gravatar.com",
-    ]
-  },
-  "biancadanforth.com": {
-    hostname: "biancadanforth.com",
-    dateVisited: 1501100879432,
-    thirdPartyHostnames: []
-  },
-  "www.google.com": {
-    hostname: "www.google.com",
-    dateVisited: 1501100742088,
-    thirdPartyHostnames: []
-  }
-};
+const numElements = 1000;
+localforage.clear();
 
-// add website to storage
-for (const website in data) {
-  localforage.setItem(website, data[website]);
+// Generate fake data
+function generateData(numElements) {
+  const data = {};
+  let j = numElements;
+  
+  for (let i = 0; i < numElements; i++) {
+    let website = {};
+    const hostname = `www.${i}.com`;
+    const dateVisited = i;
+    let firstPartyHostnames = [];
+    let thirdPartyHostnames = [];
+    if (i % 2 === 0) {
+      // even numbers are first parties
+      thirdPartyHostnames.push(`www.${j}.com`);
+      firstPartyHostnames = false;
+    } else {
+      // odd numbers are third parties
+      firstPartyHostnames.push(`www.${j}.com`);
+      thirdPartyHostnames = false;
+    }
+    j--;
+    website = {
+      hostname: hostname,
+      dateVisited: dateVisited,
+      firstPartyHostnames: firstPartyHostnames,
+      thirdPartyHostnames: thirdPartyHostnames
+    };
+    data[website.hostname] = website;
+  }
+  return data;
 }
 
-// filter for recent site
-let mostRecentSite = '';
-let mostRecentDate = 0;
-localforage.iterate((value, key) => {
-  if (value.dateVisited > mostRecentDate) {
-    mostRecentDate = value.dateVisited;
-    mostRecentSite = key;
+let websites = generateData(numElements);
+
+// Add all websites to storage
+function setAll() {
+  console.time('setAll')
+  localforage.setItem('websites', websites).then(() => {
+    console.timeEnd('setAll');
+    performOtherOps();
+  });
+}
+setAll();
+
+async function performOtherOps() {
+  // Get all websites from storage
+  async function getAll() {
+    console.time('getAll');
+    return await localforage.getItem('websites');
   }
-}).then(() => {
-  console.log('The most recent site is:', mostRecentSite, 'It was visited on:', mostRecentDate);
-});
+  websites = await getAll();
+  console.timeEnd('getAll');
 
-// filter for last 3 sites
-// sort keys in data from newest to oldest
-keysSorted = Object.keys(data).sort(function(a, b) {
-  return data[b]['dateVisited'] - data[a]['dateVisited'];
-});
-const lastThreeSites = [keysSorted[0], keysSorted[1], keysSorted[2]];
-console.log('The last 3 sites to be visited were:', lastThreeSites);
-
+  // filter for recent site
+  function getMostRecentSite() {
+    console.time('getMostRecentSite');
+    let mostRecentSite = '';
+    let mostRecentDate = 0;
+    for (const website in websites) {
+      if (websites[website]['dateVisited'] > mostRecentDate) {
+        mostRecentDate = websites[website]['dateVisited'];
+        mostRecentSite = websites[website]['hostname'];
+      }
+    }
+    console.timeEnd('getMostRecentSite');
+    console.log('The most recent site is:', mostRecentSite, 'It was visited on:', mostRecentDate);
+  }
+  getMostRecentSite();
+  
+  // filter for last 3 sites
+  function getLastThreeSites() {
+    console.time('getLastThreeSites');
+    // sort keys in websites from newest to oldest
+    const keysSorted = Object.keys(websites).sort(function(a, b) {
+      return websites[b]['dateVisited'] - websites[a]['dateVisited'];
+    });
+    const lastThreeSites = [keysSorted[0], keysSorted[1], keysSorted[2]];
+    console.log('The last 3 sites to be visited were:', lastThreeSites);
+    console.timeEnd('getLastThreeSites');
+  }
+  getLastThreeSites();
+}
