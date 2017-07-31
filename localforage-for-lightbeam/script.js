@@ -1,9 +1,6 @@
-const numElements = 1000;
-localforage.clear();
-
 // Generate fake data
 function generateData(numElements) {
-  const data = {};
+  const data = [];
   let j = numElements;
   
   for (let i = 0; i < numElements; i++) {
@@ -28,58 +25,111 @@ function generateData(numElements) {
       firstPartyHostnames: firstPartyHostnames,
       thirdPartyHostnames: thirdPartyHostnames
     };
-    data[website.hostname] = website;
+    data.push(website);
   }
   return data;
 }
 
+const numElements = 10000;
 let websites = generateData(numElements);
 
-// Add all websites to storage
-function setAll() {
-  console.time('setAll')
-  localforage.setItem('websites', websites).then(() => {
-    console.timeEnd('setAll');
-    performOtherOps();
-  });
+// clear previous storage
+async function clearAllDatabaseFromBefore() {
+  console.time('clearAllDatabaseFromBefore');
+  await localforage.clear();
+  console.timeEnd('clearAllDatabaseFromBefore');
 }
-setAll();
 
-async function performOtherOps() {
-  // Get all websites from storage
-  async function getAll() {
-    console.time('getAll');
-    return await localforage.getItem('websites');
+async function setAll() {
+  console.time('setAll');
+  for (let i = 0; i < numElements; i++) {
+    await localforage.setItem(websites[i].hostname, websites[i]);
   }
-  websites = await getAll();
+  console.timeEnd('setAll');
+}
+
+async function getAll() {
+  console.time('getAll');
+  websites = [];
+  for (let i = 0; i < numElements; i++) {
+    websites.push(await localforage.getItem(`www.${i}.com`));
+  }
   console.timeEnd('getAll');
-
-  // filter for recent site
-  function getMostRecentSite() {
-    console.time('getMostRecentSite');
-    let mostRecentSite = '';
-    let mostRecentDate = 0;
-    for (const website in websites) {
-      if (websites[website]['dateVisited'] > mostRecentDate) {
-        mostRecentDate = websites[website]['dateVisited'];
-        mostRecentSite = websites[website]['hostname'];
-      }
-    }
-    console.timeEnd('getMostRecentSite');
-    console.log('The most recent site is:', mostRecentSite, 'It was visited on:', mostRecentDate);
-  }
-  getMostRecentSite();
-  
-  // filter for last 3 sites
-  function getLastThreeSites() {
-    console.time('getLastThreeSites');
-    // sort keys in websites from newest to oldest
-    const keysSorted = Object.keys(websites).sort(function(a, b) {
-      return websites[b]['dateVisited'] - websites[a]['dateVisited'];
-    });
-    const lastThreeSites = [keysSorted[0], keysSorted[1], keysSorted[2]];
-    console.log('The last 3 sites to be visited were:', lastThreeSites);
-    console.timeEnd('getLastThreeSites');
-  }
-  getLastThreeSites();
 }
+
+async function getRandomSet() {
+  console.time('getRandomSet');
+  const numInSet = 10;
+  const randomSet = [];
+  // generate random numbers
+  for (let i = 0; i < numInSet; i++) {
+    const randNum = Math.round(Math.random() * numElements);
+    // @todo: get website to return the right object from storage...
+    const website = await localforage.getItem(`www.${randNum}.com`);
+    randomSet.push(website);
+  }
+  console.timeEnd('getRandomSet');
+  console.log("Here's a random subset of data from storage:", randomSet);
+  return randomSet;
+}
+
+// Update a value for a single website in storage
+async function setSingle(index) {
+  if (index === 1) {
+    console.time('setSingle');
+  }
+  const website = await localforage.getItem(websites[index].hostname);
+  website.dateVisited = Date.now();
+  await localforage.setItem(website.hostname, website);
+  if (index === 1) {
+    console.timeEnd('setSingle');
+  }
+}
+
+// Update a value for all websites in storage
+async function setManySingles() {
+  console.time('setManySingles');
+  for (let i = 0; i < numElements; i++) {
+    await setSingle(i);
+  }
+  console.timeEnd('setManySingles');
+}
+
+// filter for recent site
+async function getMostRecentSite() {
+  console.time('getMostRecentSite');
+  let mostRecentSite = '';
+  let mostRecentDate = 0;
+  for (const website in websites) {
+    if (websites[website]['dateVisited'] > mostRecentDate) {
+      mostRecentDate = websites[website]['dateVisited'];
+      mostRecentSite = websites[website]['hostname'];
+    }
+  }
+  console.timeEnd('getMostRecentSite');
+  console.log('The most recent site is:', mostRecentSite, 'It was visited on:', mostRecentDate);
+}
+
+// filter for last 3 sites
+async function getLastThreeSites() {
+  console.time('getLastThreeSites');
+  // sort keys in websites from newest to oldest
+  const keysSorted = Object.keys(websites).sort(function(a, b) {
+    return websites[b]['dateVisited'] - websites[a]['dateVisited'];
+  });
+  const lastThreeSites = [keysSorted[0], keysSorted[1], keysSorted[2]];
+  console.log('The last 3 sites to be visited were:', lastThreeSites);
+  console.timeEnd('getLastThreeSites');
+}
+
+async function perfCheck() {
+  await clearAllDatabaseFromBefore();
+  await setAll();
+  await getAll();
+  await setManySingles();
+  await getRandomSet();
+  await getMostRecentSite();
+  await getLastThreeSites();
+}
+
+perfCheck();
