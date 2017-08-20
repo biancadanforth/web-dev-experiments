@@ -1,0 +1,21 @@
+{
+  "manifest_version": 2,
+  "name": "webRequest experiment",
+  "version": "1.0",
+
+  "description": "The webRequest.onResponseStarted event returns a response object with HTTP request details, including a key for documentUrl, targetUrl and originUrl. The purpose of this experiment is to find out what each means in a lot of different scenarios.",
+  "homepage_url": "https://github.com/biancadanforth/web-ext-experiments",
+
+  "permissions": [
+    "webRequest",
+    "<all_urls>",
+    "tabs"
+  ],
+
+  "background": {
+    "scripts": [
+      "background.js",
+      "capture.js"
+    ]
+  }
+}
